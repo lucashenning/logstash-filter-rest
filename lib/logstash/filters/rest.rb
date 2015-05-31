@@ -2,42 +2,37 @@
 require "logstash/filters/base"
 require "logstash/namespace"
 
-# This example filter will replace the contents of the default 
-# message field with whatever you specify in the configuration.
+# Logstash REST Filter
+# This filter calls a defined URL and saves the answer into a specified field.
 #
-# It is only intended to be used as an example.
 class LogStash::Filters::Rest < LogStash::Filters::Base
 
-  # Setting the config_name here is required. This is how you
-  # configure this filter from your Logstash config.
+  # Usage:
   #
   # filter {
-  #   example {
-  #     message => "My message..."
+  #   rest {
+  #     url => "http://example.com"
   #   }
   # }
   #
   config_name "rest"
   
   # Replace the message with this value.
-  config :message, :validate => :string, :default => "Hello World!"
-  config :url, :validate => :string, :default => "http://www.google.de"
+  config :url, :validate => :string, :required => true
+  config :timestamp, :validate => :string, :default => "12345"
 
   public
   def register
-    # Add instance variables 
+    require "json"
+    require "rest_client"
+    @resource = RestClient::Resource.new(@url)
   end # def register
 
   public
   def filter(event)
-
-    if @message
-      # Replace the event message with our message as configured in the
-      # config file.
-      event["message"] = @message
-    end
-
-    # filter_matched should go in the last line of our successful code
-    filter_matched(event)
+    return unless filter?(event)
+    response = @resource.get(:params => {:timestamp => timestamp})
+    event['response'] = response
+    filter_matched(event)    
   end # def filter
 end # class LogStash::Filters::Rest
