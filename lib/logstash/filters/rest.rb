@@ -48,7 +48,10 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 	end
 	
 	if json == true
-	   event['response'] = JSON.parse(response)
+	   h = JSON.parse(response)
+	   h.each do |key, value|
+			event[key] = value
+	   end
 	else
        event['response'] = response
 	end
