@@ -58,7 +58,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 		event[key] = value
 	   end
 	else
-       	   event['response'] = response
+       	   event['response'] = response.strip
 	end
 	
     filter_matched(event)    
