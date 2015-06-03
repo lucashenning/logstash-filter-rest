@@ -13,7 +13,7 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "some text") do
-      expect(subject).to include("response")
+      expect(subject).to include("message")
     end
   end
 end
