@@ -47,9 +47,9 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   def filter(event)
     return unless filter?(event)
 	if method == "get"
-       		response = @resource.get(:params => @params)
+       		response = @resource.get()
 	else
-		response = @resource.post(:params => @params)
+		response = @resource.post(@params)
 	end
 	
 	if json == true
