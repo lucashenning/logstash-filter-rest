@@ -12,13 +12,18 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   # filter {
   #   rest {
   #     url => "http://example.com"
-  #		header => {
-  #			'key1' => 'value1'
-  #			'key2' => 'value2'
-  #			'key3' => '%{somefield}'
-  #		}
-  #		method => "post"
+  #	header => {
+  #		'key1' => 'value1'
+  #		'key2' => 'value2'
+  #		'key3' => '%{somefield}'
+  #	}
+  #	method => "post"
   #     json => true
+  #	params => {
+  #		'key1' => 'value1'
+  #		'key2' => 'value2'
+  #		'key3' => '%{somefield}'
+  #	}
   #   }
   # }
   #
@@ -29,6 +34,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   config :method, :validate => :string, :default => "get"
   config :json, :validate => :boolean, :default => false
   config :header, :validate => :hash, :default => {  }
+  config :params, :validate => :hash, :default => {  }
 
   public
   def register
@@ -40,20 +46,19 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
   def filter(event)
     return unless filter?(event)
-	
 	if method == "get"
-       response = @resource.get(:params => {:timestamp => event['timestamp']})
+       		response = @resource.get(:params => @params)
 	else
-	   response = @resource.post(:params => {:timestamp => event['timestamp']})
+		response = @resource.post(:params => @params)
 	end
 	
 	if json == true
 	   h = JSON.parse(response)
 	   h.each do |key, value|
-			event[key] = value
+		event[key] = value
 	   end
 	else
-       event['response'] = response
+       	   event['response'] = response
 	end
 	
     filter_matched(event)    
