@@ -10,6 +10,18 @@ This logstash filter provides an easy way to access RESTful Resources within log
 
 ## Usage
 ### 1. Installation
+You can use the built in plugin tool of Logstash to install the filter:
+```
+$LS_HOME/bin/plugin install logstash-filter-rest
+```
+
+Or you can build it yourself:
+```
+git clone https://github.com/lucashenning/logstash-filter-rest.git
+bundle install
+gem build logstash-filter-rest.gemspec
+$LS_HOME/bin/plugin install logstash-filter-rest-0.1.0.gem
+```
 
 ### 2. Filter Configuration
 Add the following inside the filter section of your logstash configuration:
@@ -32,7 +44,8 @@ rest {
 }
 ```
 ### 3. Accessing the result
-
+If you are expecting a single output and 'json => false' you will get a logstash field called 'response' which contains the result.
+If 'json => true' you will get a new logstash field for each key.
 
 ## Contributing
 
