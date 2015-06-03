@@ -19,7 +19,16 @@ rest {
   url => "http://icanhazip.com"     # string (required)
   json => true                      # boolean (optional, default = false)
   method => "post"                  # string (optional, default = "get")
-  header => 
+  header => {                       # hash (optional)
+    'key1' => 'value1'
+    'key2' => 'value2'
+    'key3' => '%{somefield}'
+  }
+  params => {                       # hash (optional)
+    'key1' => 'value1'
+    'key2' => 'value2'
+    'key3' => '%{somefield}'
+  }
 }
 ```
 ### 3. Accessing the result
