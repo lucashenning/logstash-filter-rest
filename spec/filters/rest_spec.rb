@@ -1,20 +1,19 @@
 require 'spec_helper'
-require "logstash/filters/example"
+require "logstash/filters/rest"
 
-describe LogStash::Filters::Example do
-  describe "Set to Hello World" do
+describe LogStash::Filters::Rest do
+  describe "Set to Rest Filter" do
     let(:config) do <<-CONFIG
       filter {
-        example {
-          message => "Hello World"
+        rest {
+          url => "http://icanhazip.com"
         }
       }
     CONFIG
     end
 
     sample("message" => "some text") do
-      expect(subject).to include("message")
-      expect(subject['message']).to eq('Hello World')
+      expect(subject).to include("response")
     end
   end
 end
