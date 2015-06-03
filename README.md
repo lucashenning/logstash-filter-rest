@@ -36,7 +36,7 @@ rest {
     'key2' => 'value2'
     'key3' => '%{somefield}'
   }
-  params => {                       # hash (optional)
+  params => {                       # hash (optional, only available for method => "post")
     'key1' => 'value1'
     'key2' => 'value2'
     'key3' => '%{somefield}'
