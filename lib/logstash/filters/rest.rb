@@ -1,6 +1,8 @@
 # encoding: utf-8
 require "logstash/filters/base"
 require "logstash/namespace"
+require "json"
+require "rest_client"
 
 # Logstash REST Filter
 # This filter calls a defined URL and saves the answer into a specified field.
@@ -38,8 +40,6 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   public
   def register
-    require "json"
-    require "rest_client"
     @resource = RestClient::Resource.new(@url, :headers => @header)
   end # def register
 
@@ -63,7 +63,9 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 	       	   event['response'] = response.strip
 		end
 	rescue
-		@logger.error("Error in Rest Filter", :url => url, :method => method, :json => json, :header => header, :params => params)
+		@logger.error("Error in Rest Filter. Parameters:", :url => url, :method => method, :json => json, :header => header, :params => params)
+		@logger.error("Rest Error Message:", :message => $!.message)
+		@logger.error("Backtrace:", :backtrace => $!.backtrace)
 		event['resterror'] = "Rest Filter Error. Please see Logstash Error Log for further information."
 	end
 	
