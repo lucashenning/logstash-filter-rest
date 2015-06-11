@@ -46,19 +46,25 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
   def filter(event)
     return unless filter?(event)
-	if method == "get"
-       		response = @resource.get()
-	else
-		response = @resource.post(@params)
-	end
-	
-	if json == true
-	   h = JSON.parse(response)
-	   h.each do |key, value|
-		event[key] = value
-	   end
-	else
-       	   event['response'] = response.strip
+    
+    	begin
+		if method == "get"
+	       		response = @resource.get()
+		else
+			response = @resource.post(@params)
+		end
+		
+		if json == true
+		   h = JSON.parse(response)
+		   h.each do |key, value|
+			event[key] = value
+		   end
+		else
+	       	   event['response'] = response.strip
+		end
+	rescue
+		@logger.error("Error in Rest Filter", :url => url, :method => method, :json => json, :header => header, :params => params)
+		event['resterror'] = "Rest Filter Error. Please see Logstash Error Log for further information."
 	end
 	
     filter_matched(event)    
