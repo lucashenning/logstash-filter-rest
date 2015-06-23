@@ -31,7 +31,7 @@ rest {
   url => "http://example.com"       # string (required, with field reference: "http://example.com?id=%{id}")
   json => true                      # boolean (optional, default = false)
   method => "post"                  # string (optional, default = "get")
-  sprintf => true                   # boolean (optional, default = false, set this to true if you want to use field references in url, header or params
+  sprintf => true                   # boolean (optional, default = false, set this to true if you want to use field references in url, header or params)
   header => {                       # hash (optional)
     "key1" => "value1"
     "key2" => "value2"
