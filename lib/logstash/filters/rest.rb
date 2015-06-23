@@ -38,6 +38,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   config :sprintf, :validate => :boolean, :default => false
   config :header, :validate => :hash, :default => {  }
   config :params, :validate => :hash, :default => {  }
+  config :response_key, :validate => :string, :default => "rest_response"
 
   public
   def register
@@ -80,14 +81,19 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 		if json == true
 			begin
 				h = JSON.parse(response)
-				h.each do |key, value|
-					event[key] = value
+				if response_key == ""
+					h.each do |key, value|
+						event[key] = value
+					end
+				else
+					event[response_key] = { }
+					event[response_key] = h
 				end
 			rescue
 				event['jsonerror'] = "unable to parse json"
 			end
 		else
-			event['response'] = response.strip
+			event[@response_key] = response.strip
 		end
 	rescue
 		@logger.error("Error in Rest Filter. Parameters:", :url => url, :method => method, :json => json, :header => header, :params => params)
