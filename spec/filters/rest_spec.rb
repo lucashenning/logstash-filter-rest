@@ -7,7 +7,7 @@ describe LogStash::Filters::Rest do
       filter {
         rest {
           url => "http://jsonplaceholder.typicode.com/users/1"
-	        json => true
+	  json => true
         }
       }
     CONFIG
