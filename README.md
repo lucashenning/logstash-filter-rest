@@ -42,6 +42,7 @@ rest {
     "key2" => "value2"
     "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
   }
+  response_key => "my_key"          # string (optional, default = "rest_response")
 }
 ```
 ### 3. Accessing the result
