@@ -11,25 +11,25 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   # Usage:
   #
-  # filter {
-  # 	rest {
-  # 		url => "http://example.com"
-  #			method => "post"
-  # 		json => true
-  #			sprintf => true
-  #			params => {
-  #				'key1' => 'value1'
-  #				'key2' => 'value2'
-  #				'key3' => '%{somefield}'
-  #			}
-  # 		header => {
-  #				'key1' => 'value1'
-  #				'key2' => 'value2'
-  #				'key3' => '%{somefield}'
-  #			}
-  #   	}
-  # }
+  #  rest {
+  #  url => "http://example.com"       # string (required, with field reference: "http://example.com?id=%{id}")
+  #  json => true                      # boolean (optional, default = false)
+  #  method => "post"                  # string (optional, default = "get")
+  #  sprintf => true                   # boolean (optional, default = false, set this to true if you want to use field references in url, header or params)
+  #  header => {                       # hash (optional)
+  #    "key1" => "value1"
+  #    "key2" => "value2"
+  #    "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
+  #  }
+  #  params => {                       # hash (optional, only available for method => "post")
+  #    "key1" => "value1"
+  #    "key2" => "value2"
+  #    "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
+  #  }
+  #  response_key => "my_key"          # string (optional, default = "rest_response")
+  #  }
   #
+  
   config_name "rest"
   
   config :url, :validate => :string, :required => true
