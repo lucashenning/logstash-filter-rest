@@ -45,9 +45,6 @@ rest {
   response_key => "my_key"          # string (optional, default = "rest_response")
 }
 ```
-### 3. Accessing the result
-If you are expecting a single output and 'json => false' you will get a logstash field called 'response' which contains the result.
-If 'json => true' you will get a new logstash field for each key.
 
 ## Contributing
 
