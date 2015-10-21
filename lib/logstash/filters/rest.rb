@@ -48,31 +48,12 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
   def filter(event)
     return unless filter?(event)
-    
 	begin
-		
-		if sprintf == true
-			begin
-				# sprintf values
-				@url = event.sprintf(@url)
-				@header.each do |key, value|
-					@header[key] = event.sprintf(value)
-				end
-				@params.each do |key, value|
-					@params[key] = event.sprintf(value)
-				end
-			rescue
-				@logger.error("Error during sprintf", :url => url, :method => method, :json => json, :header => header, :params => params)
-				@logger.error("Rest Error Message:", :message => $!.message)
-				@logger.error("Backtrace:", :backtrace => $!.backtrace)
-			end
-		end
-	
 		case method
 		when "get"
-			response = RestClient.get @url, @header
+			response = RestClient.get sprint(@sprintf, @url, event), sprint(@sprintf, @header, event)
 		when "post"
-			response = RestClient.post @url, @params, @header
+			response = RestClient.post sprint(@sprintf, @url, event), sprint(@sprintf, @params, event), sprint(@sprintf, @header, event)
 		else
 			response = "invalid method"	
 			@logger.error("Invalid method:", :method => method)
@@ -104,4 +85,21 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 	
     filter_matched(event)    
   end # def filter
+  
+  def sprint(sprintf, hash, event)
+        if sprintf
+                if hash.class == Hash
+                        result = { }
+                        hash.each do |key, value|
+                                result[key] = event.sprintf(value)
+                        end
+                        return result
+                else
+                        return event.sprintf(hash)
+                end
+        else
+                return hash
+        end
+  end
+
 end # class LogStash::Filters::Rest
