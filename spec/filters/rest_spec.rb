@@ -6,7 +6,8 @@ describe LogStash::Filters::Rest do
     let(:config) do <<-CONFIG
       filter {
         rest {
-          url => "http://icanhazip.com/"
+          url => "http://jsonplaceholder.typicode.com/users/1"
+          json => true
         }
       }
     CONFIG
@@ -14,6 +15,7 @@ describe LogStash::Filters::Rest do
 
     sample("message" => "some text") do
       expect(subject).to include("rest_response")
+      expect(subject['rest_response']).to include("id")
     end
   end
 end
