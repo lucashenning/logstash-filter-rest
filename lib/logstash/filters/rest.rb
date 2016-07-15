@@ -48,41 +48,41 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
   def filter(event)
     return unless filter?(event)
-	begin
-		case method
-		when "get"
-			response = RestClient.get sprint(@sprintf, @url, event), sprint(@sprintf, @header, event)
-		when "post"
-			response = RestClient.post sprint(@sprintf, @url, event), sprint(@sprintf, @params, event), sprint(@sprintf, @header, event)
-		else
-			response = "invalid method"	
-			@logger.error("Invalid method:", :method => method)
-		end
-		
-		if json == true
-			begin
-				h = JSON.parse(response)
-				if response_key == ""
-					h.each do |key, value|
-						event[key] = value
-					end
-				else
-					event[response_key] = { }
-					event[response_key] = h
-				end
-			rescue
-				event['jsonerror'] = "unable to parse json"
-			end
-		else
-			event[@response_key] = response.strip
-		end
-	rescue
-		@logger.error("Error in Rest Filter. Parameters:", :url => url, :method => method, :json => json, :header => header, :params => params)
-		@logger.error("Rest Error Message:", :message => $!.message)
-		@logger.error("Backtrace:", :backtrace => $!.backtrace)
-		event['resterror'] = "Rest Filter Error. Please see Logstash Error Log for further information."
-	end
-	
+  begin
+    case method
+    when "get"
+      response = RestClient.get sprint(@sprintf, @url, event), sprint(@sprintf, @header, event)
+    when "post"
+      response = RestClient.post sprint(@sprintf, @url, event), sprint(@sprintf, @params, event), sprint(@sprintf, @header, event)
+    else
+      response = "invalid method"  
+      @logger.error("Invalid method:", :method => method)
+    end
+    
+    if json == true
+      begin
+        h = JSON.parse(response)
+        if response_key == ""
+          h.each do |key, value|
+            event[key] = value
+          end
+        else
+          event[response_key] = { }
+          event[response_key] = h
+        end
+      rescue
+        event['jsonerror'] = "unable to parse json"
+      end
+    else
+      event[@response_key] = response.strip
+    end
+  rescue
+    @logger.error("Error in Rest Filter. Parameters:", :url => url, :method => method, :json => json, :header => header, :params => params)
+    @logger.error("Rest Error Message:", :message => $!.message)
+    @logger.error("Backtrace:", :backtrace => $!.backtrace)
+    event['resterror'] = "Rest Filter Error. Please see Logstash Error Log for further information."
+  end
+  
     filter_matched(event)    
   end # def filter
   
