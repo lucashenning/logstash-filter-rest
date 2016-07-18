@@ -27,6 +27,10 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #    "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
   #  }
   #  response_key => "my_key"          # string (optional, default = "rest_response")
+  #  fallback => {                     # hash describing a default in case of error
+  #    "key1" => "value1"
+  #    "key2" => "value2"
+  #  }
   #  }
   #
   
@@ -39,6 +43,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   config :header, :validate => :hash, :default => {  }
   config :params, :validate => :hash, :default => {  }
   config :response_key, :validate => :string, :default => "rest_response"
+  config :fallback, :validate => :hash, :default => {  }
 
   public
   def register
@@ -71,19 +76,27 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
           event[response_key] = h
         end
       rescue
-        event['jsonerror'] = "unable to parse json"
+        if fallback
+          event[@response_key] = fallback
+        else
+          event['jsonerror'] = "unable to parse json"
+        end
       end
     else
       event[@response_key] = response.strip
     end
   rescue
-    @logger.error("Error in Rest Filter. Parameters:", :url => url, :method => method, :json => json, :header => header, :params => params)
-    @logger.error("Rest Error Message:", :message => $!.message)
-    @logger.error("Backtrace:", :backtrace => $!.backtrace)
-    event['resterror'] = "Rest Filter Error. Please see Logstash Error Log for further information."
+    if fallback
+      event[@response_key] = fallback
+    else
+      @logger.error("Error in Rest Filter. Parameters:", :url => url, :method => method, :json => json, :header => header, :params => params)
+      @logger.error("Rest Error Message:", :message => $!.message)
+      @logger.error("Backtrace:", :backtrace => $!.backtrace)
+      event['resterror'] = "Rest Filter Error. Please see Logstash Error Log for further information."
+    end
   end
   
-    filter_matched(event)    
+    filter_matched(event)
   end # def filter
   
   def sprint(sprintf, hash, event)
