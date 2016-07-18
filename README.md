@@ -43,6 +43,10 @@ rest {
     "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
   }
   response_key => "my_key"          # string (optional, default = "rest_response")
+  fallback => {                     # hash describing a default in case of error
+    "key1" => "value1"
+    "key2" => "value2"
+  }
 }
 ```
 
