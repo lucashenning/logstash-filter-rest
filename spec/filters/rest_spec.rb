@@ -1,5 +1,5 @@
 require 'spec_helper'
-require "logstash/filters/rest"
+require 'logstash/filters/rest'
 
 describe LogStash::Filters::Rest do
   describe "Set to Rest Filter Get without params" do
@@ -16,10 +16,31 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "some text") do
-      expect(subject).to include("rest_response")
-      expect(subject['rest_response']).to include("id")
-      expect(subject['rest_response']['id']).to eq(10)
-      expect(subject['rest_response']).to_not include("fallback")
+      expect(subject).to include('rest')
+      expect(subject['rest']).to include("id")
+      expect(subject['rest']['id']).to eq(10)
+      expect(subject['rest']).to_not include("fallback")
+    end
+  end
+  describe "Set to Rest Filter Get without params custom target" do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => "http://jsonplaceholder.typicode.com/users/10"
+          }
+          json => true
+          target => 'testing'
+        }
+      }
+    CONFIG
+    end
+
+    sample("message" => "some text") do
+      expect(subject).to include('testing')
+      expect(subject['testing']).to include("id")
+      expect(subject['testing']['id']).to eq(10)
+      expect(subject['testing']).to_not include("fallback")
     end
   end
   describe "Set to Rest Filter Get without params and sprintf" do
@@ -37,10 +58,10 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "10") do
-      expect(subject).to include("rest_response")
-      expect(subject['rest_response']).to include("id")
-      expect(subject['rest_response']['id']).to eq(10)
-      expect(subject['rest_response']).to_not include("fallback")
+      expect(subject).to include('rest')
+      expect(subject['rest']).to include("id")
+      expect(subject['rest']['id']).to eq(10)
+      expect(subject['rest']).to_not include("fallback")
     end
   end
   describe "Set to Rest Filter Get without params http error" do
@@ -57,8 +78,8 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "some text") do
-      expect(subject).to_not include("rest_response")
-      expect(subject).to include("resterror")
+      expect(subject).to_not include('rest')
+      expect(subject['tags']).to include('_restfailure')
     end
   end
   describe "Set to Rest Filter Get with params" do
@@ -67,7 +88,7 @@ describe LogStash::Filters::Rest do
         rest {
           request => {
             url => "https://jsonplaceholder.typicode.com/posts"
-            params => { 
+            params => {
               userId => 10
             }
             headers => {
@@ -81,10 +102,10 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "some text") do
-      expect(subject).to include("rest_response")
-      expect(subject['rest_response'][0]).to include("userId")
-      expect(subject['rest_response'][0]['userId']).to eq(10)
-      expect(subject['rest_response']).to_not include("fallback")
+      expect(subject).to include('rest')
+      expect(subject['rest'][0]).to include("userId")
+      expect(subject['rest'][0]['userId']).to eq(10)
+      expect(subject['rest']).to_not include("fallback")
     end
   end
   describe "Set to Rest Filter Get with params sprintf" do
@@ -93,7 +114,7 @@ describe LogStash::Filters::Rest do
         rest {
           request => {
             url => "https://jsonplaceholder.typicode.com/posts"
-            params => { 
+            params => {
               userId => "%{message}"
             }
             headers => {
@@ -108,10 +129,10 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "10") do
-      expect(subject).to include("rest_response")
-      expect(subject['rest_response'][0]).to include("userId")
-      expect(subject['rest_response'][0]['userId']).to eq(10)
-      expect(subject['rest_response']).to_not include("fallback")
+      expect(subject).to include('rest')
+      expect(subject['rest'][0]).to include("userId")
+      expect(subject['rest'][0]['userId']).to eq(10)
+      expect(subject['rest']).to_not include("fallback")
     end
   end
   describe "Set to Rest Filter Post with params" do
@@ -121,7 +142,7 @@ describe LogStash::Filters::Rest do
           request => {
             url => "https://jsonplaceholder.typicode.com/posts"
             method => "post"
-            params => { 
+            params => {
               title => 'foo'
               body => 'bar'
               userId => 42
@@ -137,10 +158,10 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "some text") do
-      expect(subject).to include("rest_response")
-      expect(subject['rest_response']).to include("id")
-      expect(subject['rest_response']['userId']).to eq(42)
-      expect(subject['rest_response']).to_not include("fallback")
+      expect(subject).to include('rest')
+      expect(subject['rest']).to include("id")
+      expect(subject['rest']['userId']).to eq(42)
+      expect(subject['rest']).to_not include("fallback")
     end
   end
   describe "Set to Rest Filter Post with params sprintf" do
@@ -150,7 +171,7 @@ describe LogStash::Filters::Rest do
           request => {
             url => "https://jsonplaceholder.typicode.com/posts"
             method => "post"
-            params => { 
+            params => {
               title => 'foo'
               body => 'bar'
               userId => "%{message}"
@@ -167,10 +188,10 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "42") do
-      expect(subject).to include("rest_response")
-      expect(subject['rest_response']).to include("id")
-      expect(subject['rest_response']['userId']).to eq(42)
-      expect(subject['rest_response']).to_not include("fallback")
+      expect(subject).to include('rest')
+      expect(subject['rest']).to include("id")
+      expect(subject['rest']['userId']).to eq(42)
+      expect(subject['rest']).to_not include("fallback")
     end
   end
   describe "Fallback" do
@@ -191,13 +212,38 @@ describe LogStash::Filters::Rest do
     end
 
     sample("message" => "some text") do
-      expect(subject).to include("rest_response")
-      expect(subject['rest_response']).to include("fallback1")
-      expect(subject['rest_response']).to include("fallback2")
-      expect(subject['rest_response']).to_not include("id")
+      expect(subject).to include('rest')
+      expect(subject['rest']).to include("fallback1")
+      expect(subject['rest']).to include("fallback2")
+      expect(subject['rest']).to_not include("id")
     end
   end
-  describe "Empty response_key" do
+  describe "Fallback empty target" do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => "http://jsonplaceholder.typicode.com/users/0"
+          }
+          json => true
+          target => ''
+          fallback => {
+            "fallback1" => true
+            "fallback2" => true
+          }
+        }
+      }
+    CONFIG
+    end
+
+    sample("message" => "some text") do
+      expect(subject).to_not include('rest')
+      expect(subject).to include("fallback1")
+      expect(subject).to include("fallback2")
+      expect(subject).to_not include("id")
+    end
+  end
+  describe "Empty target" do
     let(:config) do <<-CONFIG
       filter {
         rest {
@@ -205,7 +251,7 @@ describe LogStash::Filters::Rest do
             url => "http://jsonplaceholder.typicode.com/users/1"
           }
           json => true
-          response_key => ""
+          target => ''
         }
       }
     CONFIG
