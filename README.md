@@ -1,5 +1,7 @@
 # Logstash REST Filter
 
+[![Build Status](https://travis-ci.org/gandalfb/logstash-filter-rest.svg?branch=http-keep-alive)](https://travis-ci.org/gandalfb/logstash-filter-rest)
+
 This is a filter plugin for [Logstash](https://github.com/elasticsearch/logstash).
 
 It is fully free and fully open source. The license is Apache 2.0, meaning you are pretty much free to use it however you want in whatever way.
