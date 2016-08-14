@@ -1,8 +1,8 @@
 # encoding: utf-8
-require "logstash/filters/base"
-require "logstash/namespace"
-require "logstash/plugin_mixins/http_client"
-require "json"
+require 'logstash/filters/base'
+require 'logstash/namespace'
+require 'logstash/plugin_mixins/http_client'
+require 'logstash/json'
 
 # Logstash REST Filter
 # This filter calls a defined URL and saves the answer into a specified field.
@@ -33,25 +33,29 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #   }
   #   json => true                      # boolean (optional, default = false)
   #   sprintf => true                   # boolean (optional, default = false, set this to true if you want to use field references in url, header or params)
-  #   response_key => "my_key"          # string (optional, default = "rest_response")
+  #   target => "my_key"                # string (optional, default = "rest")
   #   fallback => {                     # hash describing a default in case of error
   #     "key1" => "value1"
   #     "key2" => "value2"
   #   }
   # }
-  
-  config_name "rest"
+
+  config_name 'rest'
 
   # configure the rest request send via HttpClient Plugin
   config :request, :validate => :hash, :required => true
-  config :json, :validate => :boolean, :default => false
+  config :json, :validate => :boolean, :default => true
   config :sprintf, :validate => :boolean, :default => false
-  config :response_key, :validate => :string, :default => "rest_response"
-  config :fallback, :validate => :hash, :default => {  }
+  config :target, :validate => :string, :default => 'rest'
+  config :fallback, :validate => :hash, :default => { }
+
+  # Append values to the `tags` field when there has been no
+  # successful match
+  config :tag_on_failure, :validate => :array, :default => ['_restfailure']
 
   public
   def register
-    @request = normalize_request( @request )
+    @request = normalize_request(@request)
   end # def register
 
   private
@@ -60,19 +64,17 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       res = [:get, url_or_spec]
     elsif url_or_spec.is_a?(Hash)
       # The client will expect keys / values
-      spec = Hash[url_or_spec.clone.map {|k,v| [k.to_sym, v] }] # symbolize keys
+      spec = Hash[url_or_spec.clone.map { |k, v| [k.to_sym, v] }]
 
       # method and url aren't really part of the options, so we pull them out
       method = (spec.delete(:method) || :get).to_sym.downcase
       url = spec.delete(:url)
 
       # if it is a post and json, it is used as body string, not params
-      if method == :post
-        spec[:body] = spec.delete(:params)
-      end
+      spec[:body] = spec.delete(:params) if method == :post
 
       # We need these strings to be keywords!
-      spec[:auth] = {user: spec[:auth]["user"], pass: spec[:auth]["password"]} if spec[:auth]
+      spec[:auth] = { user: spec[:auth]['user'], pass: spec[:auth]['password'] } if spec[:auth]
 
       res = [method, url, spec]
     else
@@ -91,12 +93,8 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     raise LogStash::ConfigurationError, "Not supported request method #{method}" unless [ :get, :post ].include?( method )
 
     if spec && spec[:auth]
-      if !spec[:auth][:user]
-        raise LogStash::ConfigurationError, "Auth was specified, but 'user' was not!"
-      end
-      if !spec[:auth][:pass]
-        raise LogStash::ConfigurationError, "Auth was specified, but 'password' was not!"
-      end
+      raise LogStash::ConfigurationError, "Auth was specified, but 'user' was not!" unless spec[:auth][:user]
+      raise LogStash::ConfigurationError, "Auth was specified, but 'password' was not!" unless spec[:auth][:pass]
     end
 
     request
@@ -104,84 +102,75 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   private
   def request_http(request)
-    @logger.debug? && @logger.debug("Fetching URL", :request => request)
+    @logger.debug? && @logger.debug('Fetching URL', :request => request)
 
-    if @request[2].key?(:body)
-      @request[2][:body] = @request[2][:body].to_json
-    end
+    request[2][:body] = LogStash::Json.dump(request[2][:body]) if request[2].key?(:body)
 
     method, url, *request_opts = request
     response = client.http(method, url, *request_opts)
-    return response.code, response.body
+    [response.code, response.body]
   end
 
   private
   def process_response(response, event)
     if @json
       begin
-        h = JSON.parse(response)
-        if response_key == ""
-          h.each do |key, value|
-            event[key] = value
-          end
-        else
-          event[response_key] = h
-        end
+        parsed = LogStash::Json.load(response)
+        event = add_to_event(parsed, event)
       rescue
-        if not @fallback.empty?
-          event[@response_key] = @fallback
+        if @fallback.empty?
+          event.tag('_jsonparsefailure')
+          @logger.warn('JSON parsing error', :response => response, :event => event)
         else
-          event['jsonerror'] = "unable to parse json"
+          event = add_to_event(@fallback, event)
         end
       end
     else
-      event[@response_key] = response.strip
+      event.set(@target, response.strip)
     end
-    return event
+    event
   end
 
   public
   def filter(event)
     return unless filter?(event)
-    if @request[2].key?(:params)
-      @request[2][:params] = sprint(@sprintf, @request[2][:params], event)
-    end
-    if @request[2].key?(:body)
-      @request[2][:body] = sprint(@sprintf, @request[2][:body], event)
-    end
+    @request[2][:params] = sprint(@sprintf, @request[2][:params], event) if @request[2].key?(:params)
+    @request[2][:body] = sprint(@sprintf, @request[2][:body], event) if @request[2].key?(:body)
     @request[1] = sprint(@sprintf, @request[1], event)
 
     code, body = request_http(@request)
     if code.between?(200, 299)
-      @logger.debug? && @logger.debug("Sucess received", :code => code, :body => body)
-      event = process_response( body, event )
+      event = process_response(body, event)
+      @logger.debug? && @logger.debug('Sucess received', :code => code, :body => body)
     else
-      @logger.debug? && @logger.debug("Http error received", :code => code, :body => body)
-      if not @fallback.empty?
-        @logger.debug? && @logger.debug("Setting fallback", :fallback => @fallback)
-        event[@response_key] = @fallback
+      @logger.debug? && @logger.debug('Http error received', :code => code, :body => body)
+      if @fallback.empty?
+        @tag_on_failure.each { |tag| event.tag(tag) }
+        @logger.error('Error in Rest filter', :request => @request, :json => @json, :code => code, :body => body)
       else
-        @logger.error("Error in Rest Filter. Parameters:", :request => @request, :json => @json, :code => code, :body => body)
-        event['resterror'] = "Rest Filter Error. Please see Logstash Error Log for further information."
+        event = add_to_event(@fallback, event)
+        @logger.debug? && @logger.debug('Setting fallback', :fallback => @fallback)
       end
     end
     filter_matched(event)
   end # def filter
 
+  private
   def sprint(sprintf, hash, event)
-    if sprintf
-      if hash.class == Hash
-        result = { }
-        hash.each do |key, value|
-          result[key] = event.sprintf(value)
-        end
-        return result
-      else
-        return event.sprintf(hash)
-      end
-    else
-      return hash
-    end
+    return hash unless sprintf
+    return event.sprintf(hash) unless hash.is_a?(Hash)
+    result = {}
+    hash.each { |k, v| result[k] = event.sprintf(v) }
+    result
   end
 
+  private
+  def add_to_event(to_add, event)
+    if @target.empty?
+      to_add.each { |k, v| event[k] = v }
+    else
+      event[@target] = to_add
+    end
+    event
+  end
 end # class LogStash::Filters::Rest
