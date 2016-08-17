@@ -27,25 +27,32 @@ $LS_HOME/bin/plugin install logstash-filter-rest-0.1.0.gem
 Add the following inside the filter section of your logstash configuration:
 
 ```sh
-rest {
-  url => "http://example.com"       # string (required, with field reference: "http://example.com?id=%{id}")
-  json => true                      # boolean (optional, default = false)
-  method => "post"                  # string (optional, default = "get")
-  sprintf => true                   # boolean (optional, default = false, set this to true if you want to use field references in url, header or params)
-  header => {                       # hash (optional)
-    "key1" => "value1"
-    "key2" => "value2"
-    "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
-  }
-  params => {                       # hash (optional, only available for method => "post")
-    "key1" => "value1"
-    "key2" => "value2"
-    "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
-  }
-  response_key => "my_key"          # string (optional, default = "rest_response")
-  fallback => {                     # hash describing a default in case of error
-    "key1" => "value1"
-    "key2" => "value2"
+filter {
+  rest {
+    request => {
+      url => "http://example.com"       # string (required, with field reference: "http://example.com?id=%{id}" or params, if defined)
+      method => "post"                  # string (optional, default = "get")
+      headers => {                       # hash (optional)
+        "key1" => "value1"
+        "key2" => "value2"
+      }
+      auth => {
+        user => "AzureDiamond"
+        password => "hunter2"
+      }
+      params => {                       # hash (optional, available for method => "get" and "post"; if post it will be transformed into body hash and posted as json)
+        "key1" => "value1"
+        "key2" => "value2"
+        "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
+      }
+    }
+    json => true                      # boolean (optional, default = false)
+    sprintf => true                   # boolean (optional, default = false, set this to true if you want to use field references in url, header or params)
+    target => "my_key"          # string (optional, default = "rest_response")
+    fallback => {                     # hash describing a default in case of error
+      "key1" => "value1"
+      "key2" => "value2"
+    }
   }
 }
 ```
