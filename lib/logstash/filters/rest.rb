@@ -25,7 +25,6 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #          headers => {                       # hash (optional)
   #            "key1" => "value1"
   #            "key2" => "value2"
-  #            "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
   #          }
   #          auth => {
   #            user => "AzureDiamond"
@@ -97,7 +96,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #         }
   #       }
   #     }
-  config :fallback, :validate => :hash, :default => { }
+  config :fallback, :validate => :hash, :default => {}
 
   # Append values to the `tags` field when there has been no
   # successful match or json parsing error
