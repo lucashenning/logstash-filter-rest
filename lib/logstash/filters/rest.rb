@@ -30,7 +30,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #            user => "AzureDiamond"
   #            password => "hunter2"
   #          }
-  #          params => {                       # hash (optional, available for method => "get" and "post"; if post it will be transfored into body hash and posted as json)
+  #          params => {                       # hash (optional, available for method => "get" and "post"; if post it will be transformed into body hash and posted as json)
   #            "key1" => "value1"
   #            "key2" => "value2"
   #            "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
