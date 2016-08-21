@@ -106,7 +106,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
 
   def register
-    @request = normalize_request(@request)
+    @request = normalize_request(@request).freeze
   end # def register
 
   private
@@ -190,7 +190,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def filter(event)
     return unless filter?(event)
-    request = @request.clone
+    request = @request.dup
     request[2][:params] = sprint(@sprintf, @request[2][:params], event) if request[2].key?(:params)
     request[2][:body] = sprint(@sprintf, @request[2][:body], event) if request[2].key?(:body)
     request[1] = sprint(@sprintf, @request[1], event)
