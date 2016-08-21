@@ -190,11 +190,12 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def filter(event)
     return unless filter?(event)
-    @request[2][:params] = sprint(@sprintf, @request[2][:params], event) if @request[2].key?(:params)
-    @request[2][:body] = sprint(@sprintf, @request[2][:body], event) if @request[2].key?(:body)
-    @request[1] = sprint(@sprintf, @request[1], event)
+    request = @request.clone
+    request[2][:params] = sprint(@sprintf, @request[2][:params], event) if request[2].key?(:params)
+    request[2][:body] = sprint(@sprintf, @request[2][:body], event) if request[2].key?(:body)
+    request[1] = sprint(@sprintf, @request[1], event)
 
-    code, body = request_http(@request)
+    code, body = request_http(request)
     if code.between?(200, 299)
       event = process_response(body, event)
       @logger.debug? && @logger.debug('Sucess received', :code => code, :body => body)
@@ -202,7 +203,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       @logger.debug? && @logger.debug('Http error received', :code => code, :body => body)
       if @fallback.empty?
         @tag_on_rest_failure.each { |tag| event.tag(tag) }
-        @logger.error('Error in Rest filter', :request => @request, :json => @json, :code => code, :body => body)
+        @logger.error('Error in Rest filter', :request => request, :json => @json, :code => code, :body => body)
       else
         event = add_to_event(@fallback, event)
         @logger.debug? && @logger.debug('Setting fallback', :fallback => @fallback)
