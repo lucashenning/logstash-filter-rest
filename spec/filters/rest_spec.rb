@@ -63,6 +63,12 @@ describe LogStash::Filters::Rest do
       expect(subject['rest']['id']).to eq(10)
       expect(subject['rest']).to_not include("fallback")
     end
+    sample("message" => "9") do
+      expect(subject).to include('rest')
+      expect(subject['rest']).to include("id")
+      expect(subject['rest']['id']).to eq(9)
+      expect(subject['rest']).to_not include("fallback")
+    end
   end
   describe "Set to Rest Filter Get without params http error" do
     let(:config) do <<-CONFIG
@@ -132,6 +138,12 @@ describe LogStash::Filters::Rest do
       expect(subject).to include('rest')
       expect(subject['rest'][0]).to include("userId")
       expect(subject['rest'][0]['userId']).to eq(10)
+      expect(subject['rest']).to_not include("fallback")
+    end
+    sample("message" => "9") do
+      expect(subject).to include('rest')
+      expect(subject['rest'][0]).to include("userId")
+      expect(subject['rest'][0]['userId']).to eq(9)
       expect(subject['rest']).to_not include("fallback")
     end
   end
