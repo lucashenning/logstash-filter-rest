@@ -133,6 +133,8 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       raise LogStash::ConfigurationError, "Invalid URL or request spec: '#{url_or_spec}', expected a String or Hash!"
     end
 
+    # TODO: passively find sprintf fields to not need to copy the complete object and to deprecate sprinft config
+
     validate_request!(url_or_spec, res)
     res
   end
@@ -189,6 +191,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def filter(event)
     return unless filter?(event)
+    # TODO: instead of copying the complete object, only use and sprint the fields necessary
     request = Marshal.load(Marshal.dump(@request))
     @logger.debug? && @logger.debug('Initiated request', :request => request)
     request[2][:params] = sprint(@sprintf, @request[2][:params], event) if request[2].has_key?(:params)
