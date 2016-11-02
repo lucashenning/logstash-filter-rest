@@ -51,7 +51,6 @@ describe LogStash::Filters::Rest do
             url => "http://jsonplaceholder.typicode.com/users/%{message}"
           }
           json => true
-          sprintf => true
         }
       }
     CONFIG
@@ -122,28 +121,24 @@ describe LogStash::Filters::Rest do
             url => "https://jsonplaceholder.typicode.com/posts"
             params => {
               userId => "%{message}"
+              id => "%{message}"
             }
             headers => {
               "Content-Type" => "application/json"
             }
           }
           json => true
-          sprintf => true
         }
       }
     CONFIG
     end
 
-    sample("message" => "10") do
+    sample("message" => "1") do
       expect(subject).to include('rest')
       expect(subject['rest'][0]).to include("userId")
-      expect(subject['rest'][0]['userId']).to eq(10)
-      expect(subject['rest']).to_not include("fallback")
-    end
-    sample("message" => "9") do
-      expect(subject).to include('rest')
-      expect(subject['rest'][0]).to include("userId")
-      expect(subject['rest'][0]['userId']).to eq(9)
+      expect(subject['rest'][0]['userId']).to eq(1)
+      expect(subject['rest'][0]['id']).to eq(1)
+      expect(subject['rest'].length).to eq(1)
       expect(subject['rest']).to_not include("fallback")
     end
   end
@@ -193,7 +188,6 @@ describe LogStash::Filters::Rest do
             }
           }
           json => true
-          sprintf => true
         }
       }
     CONFIG
@@ -223,7 +217,6 @@ describe LogStash::Filters::Rest do
             }
           }
           json => true
-          sprintf => true
         }
       }
     CONFIG
