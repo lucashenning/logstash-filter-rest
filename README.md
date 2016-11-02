@@ -1,4 +1,4 @@
-# Logstash REST Filter [![Build Status](https://travis-ci.org/gandalfb/logstash-filter-rest.svg?branch=bugfix%2Frequest-handling)](https://travis-ci.org/gandalfb/logstash-filter-rest)
+# Logstash REST Filter [![Build Status](https://travis-ci.org/gandalfb/logstash-filter-rest.svg?branch=feature%2passive-sprintf)](https://travis-ci.org/gandalfb/logstash-filter-rest)
 
 This is a filter plugin for [Logstash](https://github.com/elasticsearch/logstash).
 
@@ -47,7 +47,6 @@ filter {
       }
     }
     json => true                      # boolean (optional, default = false)
-    sprintf => true                   # boolean (optional, default = false, set this to true if you want to use field references in url, header or params)
     target => "my_key"          # string (optional, default = "rest_response")
     fallback => {                     # hash describing a default in case of error
       "key1" => "value1"
