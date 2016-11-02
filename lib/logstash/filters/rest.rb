@@ -4,6 +4,36 @@ require 'logstash/namespace'
 require 'logstash/plugin_mixins/http_client'
 require 'logstash/json'
 
+# Extent hsh with a recursive compact and deep freeze
+class Hash
+  def compact
+    delete_if { |_k, v| v.respond_to?(:each) ? v.compact.empty? : v.nil? }
+  end
+
+  def deep_freeze
+    each { |_k, v| v.deep_freeze if v.respond_to? :deep_freeze }
+    freeze
+  end
+end
+
+# Extent string to parse to hsh
+class String
+  def to_object(symbolize = true)
+    LogStash::Json.load(
+      gsub(/:([a-zA-z]+)/, '"\\1"').gsub('=>', ': '),
+      :symbolize_keys => symbolize
+    )
+  end
+end
+
+#  Extent Array with deep freeze
+class Array
+  def deep_freeze
+    each { |j| j.deep_freeze if j.respond_to? :deep_freeze }
+    freeze
+  end
+end
+
 # Logstash REST Filter
 # This filter calls a defined URL and saves the answer into a specified field.
 #
@@ -33,9 +63,10 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #          params => {                       # hash (optional, available for method => "get" and "post"; if post it will be transformed into body hash and posted as json)
   #            "key1" => "value1"
   #            "key2" => "value2"
-  #            "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
+  #            "key3" => "%{somefield}"        # Field references are found implicitly
   #          }
   #        }
+  #        target => "doc"
   #      }
   #    }
   #
@@ -64,7 +95,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #         sprintf => true
   #       }
   #     }
-  config :sprintf, :validate => :boolean, :default => false
+  config :sprintf, :validate => :boolean, :default => false, :deprecated => true, :obsolete => 'sprintf is done implicitly on startup'
 
   # Defines the field, where the parsed response is written to
   # if set to '' it will be written to event root
@@ -107,6 +138,9 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def register
     @request = normalize_request(@request)
+    @sprintf_fields = find_sprintf(
+      Marshal.load(Marshal.dump(@request))
+    ).deep_freeze
   end # def register
 
   private
@@ -123,17 +157,15 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       url = spec.delete(:url)
 
       # if it is a post and json, it is used as body string, not params
-      spec[:body] = spec.delete(:params) if method == :post and spec[:params]
+      spec[:body] = spec.delete(:params) if method == :post && spec[:params]
 
       # We need these strings to be keywords!
       spec[:auth] = { user: spec[:auth]['user'], pass: spec[:auth]['password'] } if spec[:auth]
 
-      res = [method.freeze, url.freeze, spec.freeze].freeze
+      res = [method.freeze, url, spec]
     else
       raise LogStash::ConfigurationError, "Invalid URL or request spec: '#{url_or_spec}', expected a String or Hash!"
     end
-
-    # TODO: passively find sprintf fields to not need to copy the complete object and to deprecate sprinft config
 
     validate_request!(url_or_spec, res)
     res
@@ -153,6 +185,34 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     end
 
     request
+  end
+
+  private
+
+  def find_sprintf(config)
+    field_matcher = /%\{[^}]+\}/
+    if config.is_a?(Hash)
+      config.keep_if do |_k, v|
+        find_sprintf(v)
+      end.compact
+    elsif config.is_a?(Array)
+      config.keep_if do |v|
+        find_sprintf(v)
+      end.compact
+    elsif config.is_a?(String) && config =~ field_matcher
+      config
+    end
+  end
+
+  private
+
+  def add_to_event(to_add, event)
+    if @target.empty?
+      to_add.each { |k, v| event[k] = v }
+    else
+      event[@target] = to_add
+    end
+    event
   end
 
   private
@@ -191,15 +251,19 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def filter(event)
     return unless filter?(event)
-    # TODO: instead of copying the complete object, only use and sprint the fields necessary
-    request = Marshal.load(Marshal.dump(@request))
-    @logger.debug? && @logger.debug('Initiated request', :request => request)
-    request[2][:params] = sprint(@sprintf, @request[2][:params], event) if request[2].has_key?(:params)
-    request[2][:body] = sprint(@sprintf, @request[2][:body], event) if request[2].has_key?(:body)
-    request[1] = sprint(@sprintf, @request[1], event)
-    @logger.debug? && @logger.debug('Parsed request', :request => request)
+    @logger.debug? && @logger.debug('Parsing event fields', :sprintf_fields => @sprintf_fields)
+    parsed_request_fields = event.sprintf(@sprintf_fields).to_object
+    parsed_request_fields.each do |v|
+      case v
+      when Hash
+        @request[2].merge!(v)
+      when String
+        @request[1] = v
+      end
+    end
+    @logger.debug? && @logger.debug('Parsed request', :request => @request)
 
-    code, body = request_http(request)
+    code, body = request_http(@request)
     if code.between?(200, 299)
       event = process_response(body, event)
       @logger.debug? && @logger.debug('Sucess received', :code => code, :body => body)
@@ -207,7 +271,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       @logger.debug? && @logger.debug('Http error received', :code => code, :body => body)
       if @fallback.empty?
         @tag_on_rest_failure.each { |tag| event.tag(tag) }
-        @logger.error('Error in Rest filter', :request => request, :json => @json, :code => code, :body => body)
+        @logger.error('Error in Rest filter', :request => @request, :json => @json, :code => code, :body => body)
       else
         event = add_to_event(@fallback, event)
         @logger.debug? && @logger.debug('Setting fallback', :fallback => @fallback)
@@ -215,25 +279,4 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     end
     filter_matched(event)
   end # def filter
-
-  private
-
-  def sprint(sprintf, hash, event)
-    return hash unless sprintf
-    return event.sprintf(hash) unless hash.is_a?(Hash)
-    result = {}
-    hash.each { |k, v| result[k] = event.sprintf(v) }
-    result
-  end
-
-  private
-
-  def add_to_event(to_add, event)
-    if @target.empty?
-      to_add.each { |k, v| event[k] = v }
-    else
-      event[@target] = to_add
-    end
-    event
-  end
 end # class LogStash::Filters::Rest
