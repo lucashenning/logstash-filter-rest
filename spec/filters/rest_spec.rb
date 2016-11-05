@@ -1,6 +1,7 @@
-require 'spec_helper'
+require 'logstash/devutils/rspec/spec_helper'
 require 'logstash/filters/rest'
 
+#TODO: new event api with .get and .set
 describe LogStash::Filters::Rest do
   describe "Set to Rest Filter Get without params" do
     let(:config) do <<-CONFIG

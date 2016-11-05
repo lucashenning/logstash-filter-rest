@@ -1,4 +1,4 @@
-# Logstash REST Filter [![Build Status](https://travis-ci.org/gandalfb/logstash-filter-rest.svg?branch=feature%2Fpassive-sprintf)](https://travis-ci.org/gandalfb/logstash-filter-rest)
+# Logstash REST Filter [![Build Status](https://travis-ci.org/gandalfb/logstash-filter-rest.svg?branch=version%2Flogstash-5)](https://travis-ci.org/gandalfb/logstash-filter-rest)
 
 This is a filter plugin for [Logstash](https://github.com/elasticsearch/logstash).
 

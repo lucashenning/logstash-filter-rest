@@ -4,6 +4,7 @@ require 'logstash/namespace'
 require 'logstash/plugin_mixins/http_client'
 require 'logstash/json'
 
+#TODO: new event api with .get and .set
 # Extent hsh with a recursive compact and deep freeze
 class Hash
   def compact
