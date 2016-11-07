@@ -30,8 +30,8 @@ Add the following inside the filter section of your logstash configuration:
 filter {
   rest {
     request => {
-      url => "http://example.com"       # string (required, with field reference: "http://example.com?id=%{id}" or params, if defined)
-      method => "post"                  # string (optional, default = "get")
+      url => "http://example.com"        # string (required, with field reference: "http://example.com?id=%{id}" or params, if defined)
+      method => "post"                   # string (optional, default = "get")
       headers => {                       # hash (optional)
         "key1" => "value1"
         "key2" => "value2"
@@ -40,15 +40,15 @@ filter {
         user => "AzureDiamond"
         password => "hunter2"
       }
-      params => {                       # hash (optional, available for method => "get" and "post"; if post it will be transformed into body hash and posted as json)
+      params => {                        # hash (optional, available for method => "get" and "post"; if post it will be transformed into body hash and posted as json)
         "key1" => "value1"
         "key2" => "value2"
-        "key3" => "%{somefield}"        # Please set sprintf to true if you want to use field references
+        "key3" => "%{somefield}"         # sprintf is used implicitly
       }
     }
-    json => true                      # boolean (optional, default = false)
-    target => "my_key"          # string (optional, default = "rest_response")
-    fallback => {                     # hash describing a default in case of error
+    json => true                         # boolean (optional, default = true)
+    target => "my_key"                   # string (mandatory, no default)
+    fallback => {                        # hash describing a default in case of error
       "key1" => "value1"
       "key2" => "value2"
     }
@@ -56,11 +56,30 @@ filter {
 }
 ```
 
-Example config for running Logstash in `cli`:
+Print plugin version:
 
-```sh
-bin/logstash --debug -e 'input { stdin{} } filter { rest { request => { url => "https://jsonplaceholder.typicode.com/posts" method => "post" params => { "userId" => "%{message}" } headers => { "Content-Type" => "application/json" } } json => true sprintf => true target => 'rest' } } output {stdout { codec => rubydebug }}'
+``` bash
+bin/logstash-plugin list --verbose | grep rest
 ```
+
+Examples for running logstash from `cli`:
+
+``` bash
+bin/logstash --debug -e 'input { stdin{} } filter { rest { request => { url => "https://jsonplaceholder.typicode.com/posts" method => "post" params => { "userId" => "%{message}" } headers => { "Content-Type" => "application/json" } } target => 'rest' } } output {stdout { codec => rubydebug }}'
+```
+
+``` bash
+bin/logstash --debug -e 'input { stdin{} } filter { rest { request => { url => "https://jsonplaceholder.typicode.com/posts" method => "post" body => { "userId" => "%{message}" } headers => { "Content-Type" => "application/json" } } target => 'rest' } } output {stdout { codec => rubydebug }}'
+```
+
+``` bash
+bin/logstash --debug -e 'input { stdin{} } filter { rest { request => { url => "http://jsonplaceholder.typicode.com/users/%{message}" } target => 'rest' } } output {stdout { codec => rubydebug }}'
+```
+
+``` bash
+bin/logstash --debug -e 'input { stdin{} } filter { rest { request => { url => "https://jsonplaceholder.typicode.com/posts" method => "get" params => { "userId" => "%{message}" } headers => { "Content-Type" => "application/json" } } target => 'rest' } } output {stdout { codec => rubydebug }}'
+```
+
 
 ## Contributing
 
