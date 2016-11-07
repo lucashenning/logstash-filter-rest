@@ -56,6 +56,12 @@ filter {
 }
 ```
 
+Example config for running Logstash in `cli`:
+
+```sh
+bin/logstash --debug -e 'input { stdin{} } filter { rest { request => { url => "https://jsonplaceholder.typicode.com/posts" method => "post" params => { "userId" => "%{message}" } headers => { "Content-Type" => "application/json" } } json => true sprintf => true target => 'rest' } } output {stdout { codec => rubydebug }}'
+```
+
 ## Contributing
 
 All contributions are welcome: ideas, patches, documentation, bug reports, complaints, and even something you drew up on a napkin.
