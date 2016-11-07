@@ -118,6 +118,30 @@ describe LogStash::Filters::Rest do
       expect(subject.get('rest')).to_not include('fallback')
     end
   end
+  describe 'empty response' do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => 'https://jsonplaceholder.typicode.com/posts'
+            params => {
+              userId => 0
+            }
+            headers => {
+              'Content-Type' => 'application/json'
+            }
+          }
+          target => 'rest'
+        }
+      }
+    CONFIG
+    end
+
+    sample('message' => 'some text') do
+      expect(subject).to_not include('rest')
+      expect(subject.get('tags')).to include('_restfailure')
+    end
+  end
   describe 'Set to Rest Filter Get with params sprintf' do
     let(:config) do <<-CONFIG
       filter {
