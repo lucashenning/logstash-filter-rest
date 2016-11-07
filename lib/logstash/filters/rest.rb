@@ -4,8 +4,7 @@ require 'logstash/namespace'
 require 'logstash/plugin_mixins/http_client'
 require 'logstash/json'
 
-#TODO: new event api with .get and .set
-# Extent hsh with a recursive compact and deep freeze
+# Monkey Patch hsh with a recursive compact and deep freeze
 class Hash
   def compact
     delete_if { |_k, v| v.respond_to?(:each) ? v.compact.empty? : v.nil? }
@@ -17,7 +16,7 @@ class Hash
   end
 end
 
-# Extent string to parse to hsh
+# Monkey Patch string to parse to hsh
 class String
   def to_object(symbolize = true)
     LogStash::Json.load(
@@ -27,7 +26,7 @@ class String
   end
 end
 
-#  Extent Array with deep freeze
+#  Monkey Patch Array with deep freeze
 class Array
   def deep_freeze
     each { |j| j.deep_freeze if j.respond_to? :deep_freeze }
@@ -53,7 +52,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #        request => {
   #          url => "http://example.com"       # string (required, with field reference: "http://example.com?id=%{id}" or params, if defined)
   #          method => "post"                  # string (optional, default = "get")
-  #          headers => {                       # hash (optional)
+  #          headers => {                      # hash (optional)
   #            "key1" => "value1"
   #            "key2" => "value2"
   #          }
@@ -64,7 +63,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #          params => {                       # hash (optional, available for method => "get" and "post"; if post it will be transformed into body hash and posted as json)
   #            "key1" => "value1"
   #            "key2" => "value2"
-  #            "key3" => "%{somefield}"        # Field references are found implicitly
+  #            "key3" => "%{somefield}"        # Field references are found implicitly on startup
   #          }
   #        }
   #        target => "doc"
@@ -80,7 +79,6 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   # [source,ruby]
   #     filter {
   #       rest {
-  #         request => { .. }
   #         json => true
   #       }
   #     }
@@ -96,22 +94,24 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   #         sprintf => true
   #       }
   #     }
-  config :sprintf, :validate => :boolean, :default => false, :deprecated => true, :obsolete => 'sprintf is done implicitly on startup'
+  config :sprintf, :validate => :boolean, :default => false, :deprecated => true
 
-  # Defines the field, where the parsed response is written to
-  # if set to '' it will be written to event root
+  # Define the target field for placing the response data. This setting is
+  # required and may not be omitted. It is not possible to place the response
+  # into the event top-level.
   #
   # For example, if you want the data to be put in the `doc` field:
   # [source,ruby]
   #     filter {
   #       rest {
-  #         request => { .. }
   #         target => "doc"
   #       }
   #     }
   #
+  # Rest response will be expanded into a data structure in the `target` field.
+  #
   # NOTE: if the `target` field already exists, it will be overwritten!
-  config :target, :validate => :string, :default => 'rest'
+  config :target, :validate => :string, :required => true
 
   # If set, any error like json parsing or invalid http response
   # will result in this hash to be added to target instead of error tags
@@ -120,7 +120,6 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   # [source,ruby]
   #     filter {
   #       rest {
-  #         request => { .. }
   #         fallback => {
   #           'key1' => 'value1'
   #           'key2' => 'value2'
@@ -142,7 +141,18 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     @sprintf_fields = find_sprintf(
       Marshal.load(Marshal.dump(@request))
     ).deep_freeze
+    @target = normalize_target(@target)
   end # def register
+
+  private
+
+  def normalize_target(target)
+    # make sure @target is in the format [field name] if defined,
+    # i.e. not empty and surrounded by brakets
+    raise LogStash::ConfigurationError, 'target config string is empty, please set a valid field name' if target.empty?
+    target = "[#{target}]" if target && target !~ /^\[[^\[\]]+\]$/
+    target
+  end
 
   private
 
@@ -207,20 +217,10 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   private
 
-  def add_to_event(to_add, event)
-    if @target.empty?
-      to_add.each { |k, v| event[k] = v }
-    else
-      event[@target] = to_add
-    end
-    event
-  end
-
-  private
-
   def request_http(request)
-    request[2][:body] = LogStash::Json.dump(request[2][:body]) if request[2].has_key?(:body)
-    @logger.debug? && @logger.debug('Fetching request', :request => request)
+    request[2][:body] = LogStash::Json.dump(request[2][:body]) if request[2].key?(:body)
+    @logger.debug? && @logger.debug('Fetching request',
+                                    :request => request)
 
     method, url, *request_opts = request
     response = client.http(method, url, *request_opts)
@@ -233,26 +233,27 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     if @json
       begin
         parsed = LogStash::Json.load(response)
-        event = add_to_event(parsed, event)
+        event.set(@target, parsed)
       rescue
         if @fallback.empty?
+          @logger.warn('JSON parsing error',
+                       :response => response, :event => event)
           @tag_on_json_failure.each { |tag| event.tag(tag) }
-          @logger.warn('JSON parsing error', :response => response, :event => event)
         else
-          event = add_to_event(@fallback, event)
+          event.set(@target, @fallback)
         end
       end
     else
       event.set(@target, response.strip)
     end
-    event
   end
 
   public
 
   def filter(event)
     return unless filter?(event)
-    @logger.debug? && @logger.debug('Parsing event fields', :sprintf_fields => @sprintf_fields)
+    @logger.debug? && @logger.debug('Parsing event fields',
+                                    :sprintf_fields => @sprintf_fields)
     parsed_request_fields = event.sprintf(@sprintf_fields).to_object
     parsed_request_fields.each do |v|
       case v
@@ -262,20 +263,26 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
         @request[1] = v
       end
     end
-    @logger.debug? && @logger.debug('Parsed request', :request => @request)
+    @logger.debug? && @logger.debug('Parsed request',
+                                    :request => @request)
 
     code, body = request_http(@request)
     if code.between?(200, 299)
-      event = process_response(body, event)
-      @logger.debug? && @logger.debug('Sucess received', :code => code, :body => body)
+      @logger.debug? && @logger.debug('Sucess received',
+                                      :code => code, :body => body)
+      process_response(body, event)
     else
-      @logger.debug? && @logger.debug('Http error received', :code => code, :body => body)
+      @logger.debug? && @logger.debug('Http error received',
+                                      :code => code, :body => body)
       if @fallback.empty?
+        @logger.error('Error in Rest filter',
+                      :request => @request, :json => @json,
+                      :code => code, :body => body)
         @tag_on_rest_failure.each { |tag| event.tag(tag) }
-        @logger.error('Error in Rest filter', :request => @request, :json => @json, :code => code, :body => body)
       else
-        event = add_to_event(@fallback, event)
-        @logger.debug? && @logger.debug('Setting fallback', :fallback => @fallback)
+        @logger.debug? && @logger.debug('Setting fallback',
+                                        :fallback => @fallback)
+        event.set(@target, @fallback)
       end
     end
     filter_matched(event)
