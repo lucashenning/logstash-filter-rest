@@ -233,7 +233,13 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     if @json
       begin
         parsed = LogStash::Json.load(response)
-        event.set(@target, parsed)
+        if parsed.empty?
+          @logger.warn('rest response empty',
+                       :response => response, :event => event)
+          @tag_on_rest_failure.each { |tag| event.tag(tag) }
+        else
+          event.set(@target, parsed)
+        end
       rescue
         if @fallback.empty?
           @logger.warn('JSON parsing error',
