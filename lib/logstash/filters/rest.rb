@@ -106,7 +106,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
 
   def register
-    @request = normalize_request(@request).freeze
+    @request = normalize_request(@request)
   end # def register
 
   private
@@ -123,12 +123,12 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       url = spec.delete(:url)
 
       # if it is a post and json, it is used as body string, not params
-      spec[:body] = spec.delete(:params) if method == :post
+      spec[:body] = spec.delete(:params) if method == :post and spec[:params]
 
       # We need these strings to be keywords!
       spec[:auth] = { user: spec[:auth]['user'], pass: spec[:auth]['password'] } if spec[:auth]
 
-      res = [method, url, spec]
+      res = [method.freeze, url.freeze, spec.freeze].freeze
     else
       raise LogStash::ConfigurationError, "Invalid URL or request spec: '#{url_or_spec}', expected a String or Hash!"
     end
@@ -156,9 +156,8 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   private
 
   def request_http(request)
-    @logger.debug? && @logger.debug('Fetching URL', :request => request)
-
-    request[2][:body] = LogStash::Json.dump(request[2][:body]) if request[2].key?(:body)
+    request[2][:body] = LogStash::Json.dump(request[2][:body]) if request[2].has_key?(:body)
+    @logger.debug? && @logger.debug('Fetching request', :request => request)
 
     method, url, *request_opts = request
     response = client.http(method, url, *request_opts)
@@ -190,10 +189,12 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def filter(event)
     return unless filter?(event)
-    request = @request.dup
-    request[2][:params] = sprint(@sprintf, @request[2][:params], event) if request[2].key?(:params)
-    request[2][:body] = sprint(@sprintf, @request[2][:body], event) if request[2].key?(:body)
+    request = Marshal.load(Marshal.dump(@request))
+    @logger.debug? && @logger.debug('Initiated request', :request => request)
+    request[2][:params] = sprint(@sprintf, @request[2][:params], event) if request[2].has_key?(:params)
+    request[2][:body] = sprint(@sprintf, @request[2][:body], event) if request[2].has_key?(:body)
     request[1] = sprint(@sprintf, @request[1], event)
+    @logger.debug? && @logger.debug('Parsed request', :request => request)
 
     code, body = request_http(request)
     if code.between?(200, 299)

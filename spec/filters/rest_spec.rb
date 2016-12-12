@@ -206,6 +206,36 @@ describe LogStash::Filters::Rest do
       expect(subject['rest']).to_not include("fallback")
     end
   end
+  describe "Set to Rest Filter Post with body sprintf" do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => "https://jsonplaceholder.typicode.com/posts"
+            method => "post"
+            body => {
+              title => 'foo'
+              body => 'bar'
+              userId => "%{message}"
+            }
+            headers => {
+              "Content-Type" => "application/json"
+            }
+          }
+          json => true
+          sprintf => true
+        }
+      }
+    CONFIG
+    end
+
+    sample("message" => "42") do
+      expect(subject).to include('rest')
+      expect(subject['rest']).to include("id")
+      expect(subject['rest']['userId']).to eq(42)
+      expect(subject['rest']).to_not include("fallback")
+    end
+  end
   describe "Fallback" do
     let(:config) do <<-CONFIG
       filter {

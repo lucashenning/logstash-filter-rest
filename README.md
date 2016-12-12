@@ -1,4 +1,4 @@
-# Logstash REST Filter [![Build Status](https://travis-ci.org/gandalfb/logstash-filter-rest.svg?branch=http-keep-alive)](https://travis-ci.org/gandalfb/logstash-filter-rest)
+# Logstash REST Filter [![Build Status](https://travis-ci.org/gandalfb/logstash-filter-rest.svg?branch=bugfix%2Frequest-handling)](https://travis-ci.org/gandalfb/logstash-filter-rest)
 
 This is a filter plugin for [Logstash](https://github.com/elasticsearch/logstash).
 
