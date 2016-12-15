@@ -1,33 +1,34 @@
-require 'spec_helper'
+require 'logstash/devutils/rspec/spec_helper'
 require 'logstash/filters/rest'
 
 describe LogStash::Filters::Rest do
-  describe "Set to Rest Filter Get without params" do
+  describe 'Set to Rest Filter Get without params' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "http://jsonplaceholder.typicode.com/users/10"
+            url => 'http://jsonplaceholder.typicode.com/users/10'
           }
           json => true
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "some text") do
+    sample('message' => 'some text') do
       expect(subject).to include('rest')
-      expect(subject['rest']).to include("id")
-      expect(subject['rest']['id']).to eq(10)
-      expect(subject['rest']).to_not include("fallback")
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][id]')).to eq(10)
+      expect(subject.get('rest')).to_not include('fallback')
     end
   end
-  describe "Set to Rest Filter Get without params custom target" do
+  describe 'Set to Rest Filter Get without params custom target' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "http://jsonplaceholder.typicode.com/users/10"
+            url => 'http://jsonplaceholder.typicode.com/users/10'
           }
           json => true
           target => 'testing'
@@ -36,14 +37,14 @@ describe LogStash::Filters::Rest do
     CONFIG
     end
 
-    sample("message" => "some text") do
+    sample('message' => 'some text') do
       expect(subject).to include('testing')
-      expect(subject['testing']).to include("id")
-      expect(subject['testing']['id']).to eq(10)
-      expect(subject['testing']).to_not include("fallback")
+      expect(subject.get('testing')).to include('id')
+      expect(subject.get('[testing][id]')).to eq(10)
+      expect(subject.get('testing')).to_not include('fallback')
     end
   end
-  describe "Set to Rest Filter Get without params and sprintf" do
+  describe 'Set to Rest Filter Get without params and sprintf' do
     let(:config) do <<-CONFIG
       filter {
         rest {
@@ -52,226 +53,279 @@ describe LogStash::Filters::Rest do
           }
           json => true
           sprintf => true
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "10") do
+    sample('message' => '10') do
       expect(subject).to include('rest')
-      expect(subject['rest']).to include("id")
-      expect(subject['rest']['id']).to eq(10)
-      expect(subject['rest']).to_not include("fallback")
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][id]')).to eq(10)
+      expect(subject.get('rest')).to_not include('fallback')
     end
-    sample("message" => "9") do
+    sample('message' => '9') do
       expect(subject).to include('rest')
-      expect(subject['rest']).to include("id")
-      expect(subject['rest']['id']).to eq(9)
-      expect(subject['rest']).to_not include("fallback")
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][id]')).to eq(9)
+      expect(subject.get('rest')).to_not include('fallback')
     end
   end
-  describe "Set to Rest Filter Get without params http error" do
+  describe 'Set to Rest Filter Get without params http error' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "http://httpstat.us/404"
+            url => 'http://httpstat.us/404'
           }
           json => true
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "some text") do
+    sample('message' => 'some text') do
       expect(subject).to_not include('rest')
-      expect(subject['tags']).to include('_restfailure')
+      expect(subject.get('tags')).to include('_restfailure')
     end
   end
-  describe "Set to Rest Filter Get with params" do
+  describe 'Set to Rest Filter Get with params' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "https://jsonplaceholder.typicode.com/posts"
+            url => 'https://jsonplaceholder.typicode.com/posts'
             params => {
               userId => 10
             }
             headers => {
-              "Content-Type" => "application/json"
+              'Content-Type' => 'application/json'
             }
           }
           json => true
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "some text") do
+    sample('message' => 'some text') do
       expect(subject).to include('rest')
-      expect(subject['rest'][0]).to include("userId")
-      expect(subject['rest'][0]['userId']).to eq(10)
-      expect(subject['rest']).to_not include("fallback")
+      expect(subject.get('[rest][0]')).to include('userId')
+      expect(subject.get('[rest][0][userId]')).to eq(10)
+      expect(subject.get('rest')).to_not include('fallback')
     end
   end
-  describe "Set to Rest Filter Get with params sprintf" do
+  describe 'empty response' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "https://jsonplaceholder.typicode.com/posts"
+            url => 'https://jsonplaceholder.typicode.com/posts'
             params => {
-              userId => "%{message}"
+              userId => 0
             }
             headers => {
-              "Content-Type" => "application/json"
+              'Content-Type' => 'application/json'
             }
           }
-          json => true
-          sprintf => true
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "10") do
-      expect(subject).to include('rest')
-      expect(subject['rest'][0]).to include("userId")
-      expect(subject['rest'][0]['userId']).to eq(10)
-      expect(subject['rest']).to_not include("fallback")
-    end
-    sample("message" => "9") do
-      expect(subject).to include('rest')
-      expect(subject['rest'][0]).to include("userId")
-      expect(subject['rest'][0]['userId']).to eq(9)
-      expect(subject['rest']).to_not include("fallback")
+    sample('message' => 'some text') do
+      expect(subject).to_not include('rest')
+      expect(subject.get('tags')).to include('_restfailure')
     end
   end
-  describe "Set to Rest Filter Post with params" do
+  describe 'Set to Rest Filter Get with params sprintf' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "https://jsonplaceholder.typicode.com/posts"
-            method => "post"
+            url => 'https://jsonplaceholder.typicode.com/posts'
+            params => {
+              userId => "%{message}"
+              id => "%{message}"
+            }
+            headers => {
+              'Content-Type' => 'application/json'
+            }
+          }
+          json => true
+          target => 'rest'
+        }
+      }
+    CONFIG
+    end
+
+    sample('message' => '1') do
+      expect(subject).to include('rest')
+      expect(subject.get('[rest][0]')).to include('userId')
+      expect(subject.get('[rest][0][userId]')).to eq(1)
+      expect(subject.get('[rest][0][id]')).to eq(1)
+      expect(subject.get('rest').length).to eq(1)
+      expect(subject.get('rest')).to_not include('fallback')
+    end
+  end
+  describe 'Set to Rest Filter Post with params' do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => 'https://jsonplaceholder.typicode.com/posts'
+            method => 'post'
             params => {
               title => 'foo'
               body => 'bar'
               userId => 42
             }
             headers => {
-              "Content-Type" => "application/json"
+              'Content-Type' => 'application/json'
             }
           }
           json => true
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "some text") do
+    sample('message' => 'some text') do
       expect(subject).to include('rest')
-      expect(subject['rest']).to include("id")
-      expect(subject['rest']['userId']).to eq(42)
-      expect(subject['rest']).to_not include("fallback")
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][userId]')).to eq(42)
+      expect(subject.get('rest')).to_not include('fallback')
     end
   end
-  describe "Set to Rest Filter Post with params sprintf" do
+  describe 'Set to Rest Filter Post with params sprintf' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "https://jsonplaceholder.typicode.com/posts"
-            method => "post"
+            url => 'https://jsonplaceholder.typicode.com/posts'
+            method => 'post'
             params => {
               title => 'foo'
               body => 'bar'
               userId => "%{message}"
             }
             headers => {
-              "Content-Type" => "application/json"
+              'Content-Type' => 'application/json'
             }
           }
           json => true
-          sprintf => true
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "42") do
+    sample('message' => '42') do
       expect(subject).to include('rest')
-      expect(subject['rest']).to include("id")
-      expect(subject['rest']['userId']).to eq(42)
-      expect(subject['rest']).to_not include("fallback")
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][userId]')).to eq(42)
+      expect(subject.get('rest')).to_not include('fallback')
     end
   end
-  describe "Fallback" do
+  describe 'Set to Rest Filter Post with body sprintf' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "http://jsonplaceholder.typicode.com/users/0"
+            url => 'https://jsonplaceholder.typicode.com/posts'
+            method => 'post'
+            body => {
+              title => 'foo'
+              body => 'bar'
+              userId => "%{message}"
+            }
+            headers => {
+              'Content-Type' => 'application/json'
+            }
+          }
+          json => true
+          target => 'rest'
+        }
+      }
+    CONFIG
+    end
+
+    sample('message' => '42') do
+      expect(subject).to include('rest')
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][userId]')).to eq(42)
+      expect(subject.get('rest')).to_not include('fallback')
+    end
+  end
+  describe 'fallback' do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => 'http://jsonplaceholder.typicode.com/users/0'
           }
           json => true
           fallback => {
-            "fallback1" => true
-            "fallback2" => true
+            'fallback1' => true
+            'fallback2' => true
           }
+          target => 'rest'
         }
       }
     CONFIG
     end
 
-    sample("message" => "some text") do
+    sample('message' => 'some text') do
       expect(subject).to include('rest')
-      expect(subject['rest']).to include("fallback1")
-      expect(subject['rest']).to include("fallback2")
-      expect(subject['rest']).to_not include("id")
+      expect(subject.get('rest')).to include('fallback1')
+      expect(subject.get('rest')).to include('fallback2')
+      expect(subject.get('rest')).to_not include('id')
     end
   end
-  describe "Fallback empty target" do
+  describe 'empty target exception' do
     let(:config) do <<-CONFIG
       filter {
         rest {
           request => {
-            url => "http://jsonplaceholder.typicode.com/users/0"
+            url => 'http://jsonplaceholder.typicode.com/users/0'
           }
           json => true
-          target => ''
           fallback => {
-            "fallback1" => true
-            "fallback2" => true
+            'fallback1' => true
+            'fallback2' => true
           }
-        }
-      }
-    CONFIG
-    end
-
-    sample("message" => "some text") do
-      expect(subject).to_not include('rest')
-      expect(subject).to include("fallback1")
-      expect(subject).to include("fallback2")
-      expect(subject).to_not include("id")
-    end
-  end
-  describe "Empty target" do
-    let(:config) do <<-CONFIG
-      filter {
-        rest {
-          request => {
-            url => "http://jsonplaceholder.typicode.com/users/1"
-          }
-          json => true
           target => ''
         }
       }
     CONFIG
     end
-
-    sample("message" => "some text") do
-      expect(subject).to include("id")
-      expect(subject).to_not include("fallback")
+    sample('message' => 'some text') do
+      expect { subject }.to raise_error(LogStash::ConfigurationError)
+    end
+  end
+  describe 'missing target exception' do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => 'http://jsonplaceholder.typicode.com/users/0'
+          }
+          json => true
+          fallback => {
+            'fallback1' => true
+            'fallback2' => true
+          }
+        }
+      }
+    CONFIG
+    end
+    sample('message' => 'some text') do
+      expect { subject }.to raise_error(LogStash::ConfigurationError)
     end
   end
 end
