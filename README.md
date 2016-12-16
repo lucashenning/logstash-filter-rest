@@ -12,7 +12,7 @@ This logstash filter provides an easy way to access RESTful Resources within log
 ### 1. Installation
 You can use the built-in plugin tool of Logstash to install the filter:
 ```
-$LS_HOME/bin/plugin install logstash-filter-rest
+$LS_HOME/bin/logstash-plugin install logstash-filter-rest
 ```
 
 Or you can build it yourself:
@@ -20,7 +20,7 @@ Or you can build it yourself:
 git clone https://github.com/lucashenning/logstash-filter-rest.git
 bundle install
 gem build logstash-filter-rest.gemspec
-$LS_HOME/bin/plugin install logstash-filter-rest-0.1.0.gem
+$LS_HOME/bin/logstash-plugin install logstash-filter-rest-0.1.0.gem
 ```
 
 ### 2. Filter Configuration
