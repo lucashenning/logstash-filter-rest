@@ -272,9 +272,15 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     @logger.debug? && @logger.debug('Parsed request',
                                     :request => @request)
 
-    code, body = request_http(@request)
-    if code.between?(200, 299)
-      @logger.debug? && @logger.debug('Sucess received',
+    begin
+      code, body = request_http(@request)
+    rescue StandardError => e
+      @logger.error('HTTP Client Error',
+                    :error => e, :request => @request)
+    end
+
+    if code && code.between?(200, 299)
+      @logger.debug? && @logger.debug('Success received',
                                       :code => code, :body => body)
       process_response(body, event)
     else
