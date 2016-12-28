@@ -272,7 +272,6 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     @logger.debug? && @logger.debug('Parsed request',
                                     :request => @request)
 
-    client_error = nil
     begin
       code, body = request_http(@request)
     rescue StandardError => client_error
