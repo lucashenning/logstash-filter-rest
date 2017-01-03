@@ -328,4 +328,21 @@ describe LogStash::Filters::Rest do
       expect { subject }.to raise_error(LogStash::ConfigurationError)
     end
   end
+  describe 'http client throws exception' do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => 'invalid_url'
+          }
+          target => 'rest'
+        }
+      }
+    CONFIG
+    end
+    sample('message' => 'some text') do
+      expect(subject).to_not include('rest')
+      expect(subject.get('tags')).to include('_restfailure')
+    end
+  end
 end

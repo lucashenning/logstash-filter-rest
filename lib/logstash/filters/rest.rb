@@ -272,18 +272,26 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     @logger.debug? && @logger.debug('Parsed request',
                                     :request => @request)
 
-    code, body = request_http(@request)
-    if code.between?(200, 299)
-      @logger.debug? && @logger.debug('Sucess received',
+    client_error = nil
+    begin
+      code, body = request_http(@request)
+    rescue StandardError => e
+      client_error = e
+    end
+
+    if !client_error && code.between?(200, 299)
+      @logger.debug? && @logger.debug('Success received',
                                       :code => code, :body => body)
       process_response(body, event)
     else
       @logger.debug? && @logger.debug('Http error received',
-                                      :code => code, :body => body)
+                                      :code => code, :body => body,
+                                      :client_error => client_error)
       if @fallback.empty?
         @logger.error('Error in Rest filter',
                       :request => @request, :json => @json,
-                      :code => code, :body => body)
+                      :code => code, :body => body,
+                      :client_error => client_error)
         @tag_on_rest_failure.each { |tag| event.tag(tag) }
       else
         @logger.debug? && @logger.debug('Setting fallback',
