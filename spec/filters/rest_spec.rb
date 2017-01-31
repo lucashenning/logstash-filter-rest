@@ -210,7 +210,7 @@ describe LogStash::Filters::Rest do
             url => 'https://jsonplaceholder.typicode.com/posts'
             method => 'post'
             params => {
-              title => 'foo'
+              title => '%{message}'
               body => 'bar'
               userId => "%{message}"
             }
@@ -228,7 +228,22 @@ describe LogStash::Filters::Rest do
     sample('message' => '42') do
       expect(subject).to include('rest')
       expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][title]')).to eq(42)
       expect(subject.get('[rest][userId]')).to eq(42)
+      expect(subject.get('rest')).to_not include('fallback')
+    end
+    sample('message' => ':5e?#!-_') do
+      expect(subject).to include('rest')
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][title]')).to eq(':5e?#!-_')
+      expect(subject.get('[rest][userId]')).to eq(':5e?#!-_')
+      expect(subject.get('rest')).to_not include('fallback')
+    end
+    sample('message' => ':4c43=>') do
+      expect(subject).to include('rest')
+      expect(subject.get('rest')).to include('id')
+      expect(subject.get('[rest][title]')).to eq(':4c43=>')
+      expect(subject.get('[rest][userId]')).to eq(':4c43=>')
       expect(subject.get('rest')).to_not include('fallback')
     end
   end
