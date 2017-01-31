@@ -20,7 +20,7 @@ end
 class String
   def to_object(symbolize = true)
     LogStash::Json.load(
-      gsub(/:([a-zA-z]+)/, '"\\1"').gsub('=>', ': '),
+      gsub(/:([\w]+)=>/, '"\\1"=>').gsub('=>', ': '),
       :symbolize_keys => symbolize
     )
   end
@@ -254,13 +254,33 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     end
   end
 
+  private
+
+  def field_intrpl(intrpl_fields, event)
+    return intrpl_fields if intrpl_fields.empty?
+    return event.sprintf(intrpl_fields) unless intrpl_fields.respond_to?(:each)
+    case intrpl_fields
+    when Array
+      result = []
+      intrpl_fields.each do |v|
+        result << field_intrpl(v, event)
+      end
+    when Hash
+      result = {}
+      intrpl_fields.each do |k, v|
+        result[k] = field_intrpl(v, event)
+      end
+    end
+    result
+  end
+
   public
 
   def filter(event)
     return unless filter?(event)
     @logger.debug? && @logger.debug('Parsing event fields',
                                     :sprintf_fields => @sprintf_fields)
-    parsed_request_fields = event.sprintf(@sprintf_fields).to_object
+    parsed_request_fields = field_intrpl(@sprintf_fields, event)
     parsed_request_fields.each do |v|
       case v
       when Hash
