@@ -16,16 +16,6 @@ class Hash
   end
 end
 
-# Monkey Patch string to parse to hsh
-class String
-  def to_object(symbolize = true)
-    LogStash::Json.load(
-      gsub(/:([\w]+)=>/, '"\\1"=>').gsub('=>', ': '),
-      :symbolize_keys => symbolize
-    )
-  end
-end
-
 #  Monkey Patch Array with deep freeze
 class Array
   def deep_freeze
