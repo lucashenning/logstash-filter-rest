@@ -1,4 +1,4 @@
-## 0.6.0
+## 0.5.2
   - Fix behavior, where a referenced field (`%{...}`) has `ruby` chars
   (i.e., consisting of `:`)
   - Field interpolation is done by assigning explicit values instead
