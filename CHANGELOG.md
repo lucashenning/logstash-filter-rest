@@ -1,5 +1,4 @@
 ## 0.5.3
-
   - freeze all instance variables
   - fix parallel processing by creating a `deep_clone` for each event
   - use `LogStash::Util.deep_clone` for object cloning
