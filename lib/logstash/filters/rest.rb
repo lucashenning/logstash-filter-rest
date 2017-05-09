@@ -127,11 +127,11 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
 
   def register
-    @request = normalize_request(@request)
+    @request = normalize_request(@request).deep_freeze
     @sprintf_fields = find_sprintf(
-      Marshal.load(Marshal.dump(@request))
+      LogStash::Util.deep_clone(@request)
     ).deep_freeze
-    @target = normalize_target(@target)
+    @target = normalize_target(@target).freeze
   end # def register
 
   private
@@ -208,7 +208,9 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   private
 
   def request_http(request)
-    request[2][:body] = LogStash::Json.dump(request[2][:body]) if request[2].key?(:body)
+    if request[2].key?(:body) && @json
+      request[2][:body] = LogStash::Json.dump(request[2][:body])
+    end
     @logger.debug? && @logger.debug('Fetching request',
                                     :request => request)
 
@@ -268,23 +270,26 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def filter(event)
     return unless filter?(event)
-    @logger.debug? && @logger.debug('Parsing event fields',
+    request = LogStash::Util.deep_clone(@request)
+    @logger.debug? && @logger.debug('Processing request',
+                                    :request => request,
                                     :sprintf_fields => @sprintf_fields)
+
     parsed_request_fields = field_intrpl(@sprintf_fields, event)
     parsed_request_fields.each do |v|
       case v
       when Hash
-        @request[2].merge!(v)
+        request[2].merge!(v)
       when String
-        @request[1] = v
+        request[1] = v
       end
     end
     @logger.debug? && @logger.debug('Parsed request',
-                                    :request => @request)
+                                    :request => request)
 
     client_error = nil
     begin
-      code, body = request_http(@request)
+      code, body = request_http(request)
     rescue StandardError => e
       client_error = e
     end
@@ -299,7 +304,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
                                       :client_error => client_error)
       if @fallback.empty?
         @logger.error('Error in Rest filter',
-                      :request => @request, :json => @json,
+                      :request => request, :json => @json,
                       :code => code, :body => body,
                       :client_error => client_error)
         @tag_on_rest_failure.each { |tag| event.tag(tag) }
