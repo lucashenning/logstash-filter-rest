@@ -323,26 +323,6 @@ describe LogStash::Filters::Rest do
       expect { subject }.to raise_error(LogStash::ConfigurationError)
     end
   end
-  describe 'missing target exception' do
-    let(:config) do <<-CONFIG
-      filter {
-        rest {
-          request => {
-            url => 'http://jsonplaceholder.typicode.com/users/0'
-          }
-          json => true
-          fallback => {
-            'fallback1' => true
-            'fallback2' => true
-          }
-        }
-      }
-    CONFIG
-    end
-    sample('message' => 'some text') do
-      expect { subject }.to raise_error(LogStash::ConfigurationError)
-    end
-  end
   describe 'http client throws exception' do
     let(:config) do <<-CONFIG
       filter {
