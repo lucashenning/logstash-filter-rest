@@ -315,7 +315,7 @@ describe LogStash::Filters::Rest do
       expect(subject).to include('rest')
       expect(subject.get('rest')).to include('key1')
       expect(subject.get('[rest][key1][1][filterType]')).to eq('unique')
-      expect(subject.get('[rest][key2][0][message]')).to eq(42)
+      expect(subject.get('[rest][key2][0][message]')).to eq('42')
       expect(subject.get('[rest][userId]')).to eq(42)
       expect(subject.get('rest')).to_not include('fallback')
     end
