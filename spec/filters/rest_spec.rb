@@ -277,6 +277,49 @@ describe LogStash::Filters::Rest do
       expect(subject.get('rest')).to_not include('fallback')
     end
   end
+  describe 'Set to Rest Filter Post with body sprintf nested params' do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => 'https://jsonplaceholder.typicode.com/posts'
+            method => 'post'
+            body => {
+              key1 => [
+                {
+                  "filterType" => "text"
+                  "text" => "salmon"
+                },
+                {
+                  "filterType" => "unique"
+                }
+              ]
+              key2 => [
+                {
+                  "message" => "%{message}"
+                }
+              ]
+              userId => "%{message}"
+            }
+            headers => {
+              'Content-Type' => 'application/json'
+            }
+          }
+          target => 'rest'
+        }
+      }
+    CONFIG
+    end
+
+    sample('message' => '42') do
+      expect(subject).to include('rest')
+      expect(subject.get('rest')).to include('key1')
+      expect(subject.get('[rest][key1][1][filterType]')).to eq('unique')
+      expect(subject.get('[rest][key2][0][message]')).to eq(42)
+      expect(subject.get('[rest][userId]')).to eq(42)
+      expect(subject.get('rest')).to_not include('fallback')
+    end
+  end
   describe 'fallback' do
     let(:config) do <<-CONFIG
       filter {
