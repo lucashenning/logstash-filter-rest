@@ -18,6 +18,10 @@ end
 
 #  Monkey Patch Array with deep freeze
 class Array
+  def compact
+    delete_if { |v| v.respond_to?(:each) ? v.compact.empty? : v.nil? }
+  end
+
   def deep_freeze
     each { |j| j.deep_freeze if j.respond_to? :deep_freeze }
     freeze
@@ -279,7 +283,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     parsed_request_fields.each do |v|
       case v
       when Hash
-        request[2].merge!(v)
+        request[2].deep_merge!(v)
       when String
         request[1] = v
       end
