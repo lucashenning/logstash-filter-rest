@@ -215,7 +215,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     if request[2].key?(:body) && @json
       request[2][:body] = LogStash::Json.dump(request[2][:body])
     end
-    @logger.debug? && @logger.debug('Fetching request',
+    @logger.debug? && @logger.debug('fetching request',
                                     :request => request)
 
     method, url, *request_opts = request
@@ -275,7 +275,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   def filter(event)
     return unless filter?(event)
     request = LogStash::Util.deep_clone(@request)
-    @logger.debug? && @logger.debug('Processing request',
+    @logger.debug? && @logger.debug('processing request',
                                     :request => request,
                                     :sprintf_fields => @sprintf_fields)
 
@@ -288,7 +288,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
         request[1] = v
       end
     end
-    @logger.debug? && @logger.debug('Parsed request',
+    @logger.debug? && @logger.debug('merged request',
                                     :request => request)
 
     client_error = nil
@@ -299,21 +299,21 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     end
 
     if !client_error && code.between?(200, 299)
-      @logger.debug? && @logger.debug('Success received',
+      @logger.debug? && @logger.debug('success received',
                                       :code => code, :body => body)
       process_response(body, event)
     else
-      @logger.debug? && @logger.debug('Http error received',
+      @logger.debug? && @logger.debug('http error received',
                                       :code => code, :body => body,
                                       :client_error => client_error)
       if @fallback.empty?
-        @logger.error('Error in Rest filter',
+        @logger.error('error in rest filter',
                       :request => request, :json => @json,
                       :code => code, :body => body,
                       :client_error => client_error)
         @tag_on_rest_failure.each { |tag| event.tag(tag) }
       else
-        @logger.debug? && @logger.debug('Setting fallback',
+        @logger.debug? && @logger.debug('setting fallback',
                                         :fallback => @fallback)
         event.set(@target, @fallback)
       end
