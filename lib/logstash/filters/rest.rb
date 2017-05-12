@@ -135,6 +135,7 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     @sprintf_fields = find_sprintf(
       LogStash::Util.deep_clone(@request)
     ).deep_freeze
+    @sprintf_needed = !@sprintf_fields.empty?
     @target = normalize_target(@target).freeze
   end # def register
 
@@ -277,19 +278,13 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
     request = LogStash::Util.deep_clone(@request)
     @logger.debug? && @logger.debug('processing request',
                                     :request => request,
-                                    :sprintf_fields => @sprintf_fields)
+                                    :sprintf_needed => @sprintf_needed)
 
-    parsed_request_fields = field_intrpl(@sprintf_fields, event)
-    parsed_request_fields.each do |v|
-      case v
-      when Hash
-        request[2].deep_merge!(v)
-      when String
-        request[1] = v
-      end
+    if @sprintf_needed
+      request = field_intrpl(request, event)
+      @logger.debug? && @logger.debug('interpolated request',
+                                      :request => request)
     end
-    @logger.debug? && @logger.debug('merged request',
-                                    :request => request)
 
     client_error = nil
     begin
