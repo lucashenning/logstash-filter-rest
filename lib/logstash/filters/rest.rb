@@ -254,9 +254,9 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   private
 
   def field_intrpl(intrpl_fields, event)
-    return intrpl_fields if intrpl_fields.empty?
-    return event.sprintf(intrpl_fields) unless intrpl_fields.respond_to?(:each)
     case intrpl_fields
+    when String
+      result = event.sprintf(intrpl_fields)
     when Array
       result = []
       intrpl_fields.each do |v|
@@ -267,6 +267,8 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       intrpl_fields.each do |k, v|
         result[k] = field_intrpl(v, event)
       end
+    else
+      result = intrpl_fields
     end
     result
   end
