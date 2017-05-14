@@ -335,7 +335,7 @@ describe LogStash::Filters::Rest do
       expect(subject.get('[rest][key3][0][filterType]')).to eq('text')
       expect(subject.get('[rest][key3][0][number]')).to eq(44)
       expect(subject.get('[rest][key3][1][filterType]')).to eq('unique')
-      expect(subject.get('[rest][key3][1][null]')).to eq("nil")
+      expect(subject.get('[rest][key3][1][null]')).to eq('nil')
       expect(subject.get('[rest][userId]')).to eq(42)
       expect(subject.get('rest')).to_not include('fallback')
     end
