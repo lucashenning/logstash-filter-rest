@@ -1,3 +1,7 @@
+## 0.5.4
+
+  - update `gemspec` to work with logstash 5.5
+
 ## 0.5.3
   - freeze all instance variables
   - fix parallel processing by creating a `deep_clone` for each event
