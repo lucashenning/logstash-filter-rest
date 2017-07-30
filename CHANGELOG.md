@@ -1,3 +1,11 @@
+## 0.5.3
+  - freeze all instance variables
+  - fix parallel processing by creating a `deep_clone` for each event
+  - use `LogStash::Util.deep_clone` for object cloning
+  - only dump body as json, if json is enabled in config (default)
+  - delete empty target testcase, as catched by upper logstash `LogStash::ConfigurationError`
+  - fix `sprintf` find and merge for more complex structures
+
 ## 0.5.2
   - Fix behavior, where a referenced field (`%{...}`) has `ruby` chars
   (i.e., consisting of `:`)

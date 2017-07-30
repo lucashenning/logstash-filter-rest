@@ -277,6 +277,69 @@ describe LogStash::Filters::Rest do
       expect(subject.get('rest')).to_not include('fallback')
     end
   end
+  describe 'Set to Rest Filter Post with body sprintf nested params' do
+    let(:config) do <<-CONFIG
+      filter {
+        rest {
+          request => {
+            url => 'https://jsonplaceholder.typicode.com/posts'
+            method => 'post'
+            body => {
+              key1 => [
+                {
+                  "filterType" => "text"
+                  "text" => "salmon"
+                  "boolean" => false
+                },
+                {
+                  "filterType" => "unique"
+                }
+              ]
+              key2 => [
+                {
+                  "message" => "123%{message}"
+                  "boolean" => true
+                }
+              ]
+              key3 => [
+                {
+                  "text" => "%{message}123"
+                  "filterType" => "text"
+                  "number" => 44
+                },
+                {
+                  "filterType" => "unique"
+                  "null" => nil
+                }
+              ]
+              userId => "%{message}"
+            }
+            headers => {
+              'Content-Type' => 'application/json'
+            }
+          }
+          target => 'rest'
+        }
+      }
+    CONFIG
+    end
+
+    sample('message' => '42') do
+      expect(subject).to include('rest')
+      expect(subject.get('rest')).to include('key1')
+      expect(subject.get('[rest][key1][0][boolean]')).to eq('false')
+      expect(subject.get('[rest][key1][1][filterType]')).to eq('unique')
+      expect(subject.get('[rest][key2][0][message]')).to eq('12342')
+      expect(subject.get('[rest][key2][0][boolean]')).to eq('true')
+      expect(subject.get('[rest][key3][0][text]')).to eq('42123')
+      expect(subject.get('[rest][key3][0][filterType]')).to eq('text')
+      expect(subject.get('[rest][key3][0][number]')).to eq(44)
+      expect(subject.get('[rest][key3][1][filterType]')).to eq('unique')
+      expect(subject.get('[rest][key3][1][null]')).to eq('nil')
+      expect(subject.get('[rest][userId]')).to eq(42)
+      expect(subject.get('rest')).to_not include('fallback')
+    end
+  end
   describe 'fallback' do
     let(:config) do <<-CONFIG
       filter {
@@ -315,26 +378,6 @@ describe LogStash::Filters::Rest do
             'fallback2' => true
           }
           target => ''
-        }
-      }
-    CONFIG
-    end
-    sample('message' => 'some text') do
-      expect { subject }.to raise_error(LogStash::ConfigurationError)
-    end
-  end
-  describe 'missing target exception' do
-    let(:config) do <<-CONFIG
-      filter {
-        rest {
-          request => {
-            url => 'http://jsonplaceholder.typicode.com/users/0'
-          }
-          json => true
-          fallback => {
-            'fallback1' => true
-            'fallback2' => true
-          }
         }
       }
     CONFIG

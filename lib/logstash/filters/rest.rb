@@ -18,6 +18,10 @@ end
 
 #  Monkey Patch Array with deep freeze
 class Array
+  def compact
+    delete_if { |v| v.respond_to?(:each) ? v.compact.empty? : v.nil? }
+  end
+
   def deep_freeze
     each { |j| j.deep_freeze if j.respond_to? :deep_freeze }
     freeze
@@ -127,11 +131,12 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   public
 
   def register
-    @request = normalize_request(@request)
+    @request = normalize_request(@request).deep_freeze
     @sprintf_fields = find_sprintf(
-      Marshal.load(Marshal.dump(@request))
+      LogStash::Util.deep_clone(@request)
     ).deep_freeze
-    @target = normalize_target(@target)
+    @sprintf_needed = !@sprintf_fields.empty?
+    @target = normalize_target(@target).freeze
   end # def register
 
   private
@@ -208,8 +213,10 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   private
 
   def request_http(request)
-    request[2][:body] = LogStash::Json.dump(request[2][:body]) if request[2].key?(:body)
-    @logger.debug? && @logger.debug('Fetching request',
+    if request[2].key?(:body) && @json
+      request[2][:body] = LogStash::Json.dump(request[2][:body])
+    end
+    @logger.debug? && @logger.debug('fetching request',
                                     :request => request)
 
     method, url, *request_opts = request
@@ -247,9 +254,9 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
   private
 
   def field_intrpl(intrpl_fields, event)
-    return intrpl_fields if intrpl_fields.empty?
-    return event.sprintf(intrpl_fields) unless intrpl_fields.respond_to?(:each)
     case intrpl_fields
+    when String
+      result = event.sprintf(intrpl_fields)
     when Array
       result = []
       intrpl_fields.each do |v|
@@ -260,6 +267,8 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
       intrpl_fields.each do |k, v|
         result[k] = field_intrpl(v, event)
       end
+    else
+      result = intrpl_fields
     end
     result
   end
@@ -268,43 +277,40 @@ class LogStash::Filters::Rest < LogStash::Filters::Base
 
   def filter(event)
     return unless filter?(event)
-    @logger.debug? && @logger.debug('Parsing event fields',
-                                    :sprintf_fields => @sprintf_fields)
-    parsed_request_fields = field_intrpl(@sprintf_fields, event)
-    parsed_request_fields.each do |v|
-      case v
-      when Hash
-        @request[2].merge!(v)
-      when String
-        @request[1] = v
-      end
+    request = LogStash::Util.deep_clone(@request)
+    @logger.debug? && @logger.debug('processing request',
+                                    :request => request,
+                                    :sprintf_needed => @sprintf_needed)
+
+    if @sprintf_needed
+      request = field_intrpl(request, event)
+      @logger.debug? && @logger.debug('interpolated request',
+                                      :request => request)
     end
-    @logger.debug? && @logger.debug('Parsed request',
-                                    :request => @request)
 
     client_error = nil
     begin
-      code, body = request_http(@request)
+      code, body = request_http(request)
     rescue StandardError => e
       client_error = e
     end
 
     if !client_error && code.between?(200, 299)
-      @logger.debug? && @logger.debug('Success received',
+      @logger.debug? && @logger.debug('success received',
                                       :code => code, :body => body)
       process_response(body, event)
     else
-      @logger.debug? && @logger.debug('Http error received',
+      @logger.debug? && @logger.debug('http error received',
                                       :code => code, :body => body,
                                       :client_error => client_error)
       if @fallback.empty?
-        @logger.error('Error in Rest filter',
-                      :request => @request, :json => @json,
+        @logger.error('error in rest filter',
+                      :request => request, :json => @json,
                       :code => code, :body => body,
                       :client_error => client_error)
         @tag_on_rest_failure.each { |tag| event.tag(tag) }
       else
-        @logger.debug? && @logger.debug('Setting fallback',
+        @logger.debug? && @logger.debug('setting fallback',
                                         :fallback => @fallback)
         event.set(@target, @fallback)
       end
